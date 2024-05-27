@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 """
-Unittest parameterization
+Unittest parameterization and mocking
 """
 
 import unittest
+from unittest.mock import patch, Mock
 from parameterized import parameterized
+import requests
 
 
 def access_nested_map(nested_map, path):
@@ -22,6 +24,17 @@ def access_nested_map(nested_map, path):
             raise KeyError(key)
         nested_map = nested_map[key]
     return nested_map
+
+
+def get_json(url):
+    """
+    Makes an HTTP GET request to the given URL and returns the JSON response.
+
+    :param url: URL to make the GET request to
+    :return: JSON response from the GET request
+    """
+    response = requests.get(url)
+    return response.json()
 
 
 class TestAccessNestedMap(unittest.TestCase):
@@ -61,6 +74,34 @@ class TestAccessNestedMap(unittest.TestCase):
         with self.assertRaises(KeyError) as cm:
             access_nested_map(nested_map, path)
         self.assertEqual(str(cm.exception), f"'{path[-1]}'")
+
+
+class TestGetJson(unittest.TestCase):
+    """
+    Test case for the get_json function.
+    """
+
+    @parameterized.expand([
+        ("http://example.com", {"payload": True}),
+        ("http://holberton.io", {"payload": False})
+    ])
+    @patch('requests.get')
+    def test_get_json(self, test_url, test_payload, mock_get):
+        """
+        Test get_json function to ensure it returns the expected result.
+
+        :param test_url: URL to make the GET request to.
+        :param test_payload: The expected JSON payload
+                        returned by the GET request.
+        :param mock_get: Mock object for requests.get.
+        """
+        mock_response = Mock()
+        mock_response.json.return_value = test_payload
+        mock_get.return_value = mock_response
+
+        result = get_json(test_url)
+        mock_get.assert_called_once_with(test_url)
+        self.assertEqual(result, test_payload)
 
 
 if __name__ == '__main__':
