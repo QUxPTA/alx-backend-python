@@ -112,6 +112,41 @@ class TestGithubOrgClient(unittest.TestCase):
         # Assert that the result matches the expected result
         self.assertEqual(result, expected_result)
 
+    def test_public_repos(self):
+        """
+        Test the public_repos method of GithubOrgClient
+        without specifying a license.
+        """
+        # Create an instance of GithubOrgClient
+        client = GithubOrgClient("example_org")
+
+        # Mock the get_json method to return the repository data
+        with patch('client.get_json',
+                   side_effect=[org_payload, repos_payload]):
+            # Call the public_repos method
+            result = client.public_repos()
+
+        # Assert that the result matches the expected list of repositories
+        self.assertEqual(result, expected_repos)
+
+    def test_public_repos_with_license(self):
+        """
+        Test the public_repos method of GithubOrgClient
+        with a specified license.
+        """
+        # Create an instance of GithubOrgClient
+        client = GithubOrgClient("example_org")
+
+        # Mock the get_json method to return the repository data
+        with patch('client.get_json',
+                   side_effect=[org_payload, repos_payload]):
+            # Call the public_repos method with a specified license
+            result = client.public_repos(license="apache-2.0")
+
+        # Assert that the result matches the expected
+        # list of repositories with Apache 2.0 license
+        self.assertEqual(result, apache2_repos)
+
 
 @parameterized_class([
     {"org_payload": org_payload,
@@ -152,6 +187,14 @@ class TestIntegrationGithubOrgClient(unittest.TestCase):
         client = GithubOrgClient("example_org")
         result = client.public_repos()
         self.assertEqual(result, self.expected_repos)
+
+    def test_public_repos_with_license(self):
+        """
+        Test the public_repos method with a specified license with integration.
+        """
+        client = GithubOrgClient("example_org")
+        result = client.public_repos(license="apache-2.0")
+        self.assertEqual(result, self.apache2_repos)
 
 
 if __name__ == '__main__':
