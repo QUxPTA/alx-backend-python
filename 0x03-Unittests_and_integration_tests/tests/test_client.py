@@ -4,9 +4,13 @@ Unittest for GithubOrgClient
 """
 
 import unittest
-from unittest.mock import patch
-from parameterized import parameterized
+from unittest.mock import patch, Mock
+from parameterized import parameterized, parameterized_class
 from client import GithubOrgClient, get_json
+import requests
+
+# Import fixtures
+from fixtures import org_payload, repos_payload, expected_repos, apache2_repos
 
 
 class TestGithubOrgClient(unittest.TestCase):
@@ -51,7 +55,7 @@ class TestGithubOrgClient(unittest.TestCase):
         client = GithubOrgClient("example_org")
 
         # Call the _public_repos_url method
-        result = client._public_repos_url()
+        result = client._public_repos_url
 
         # Assert that the result is the expected URL
         self.assertEqual(
@@ -76,7 +80,7 @@ class TestGithubOrgClient(unittest.TestCase):
         result = client.public_repos()
 
         # Assert that the result is the expected list of repositories
-        expected_result = [{"name": "repo1"}, {"name": "repo2"}]
+        expected_result = ["repo1", "repo2"]
         self.assertEqual(result, expected_result)
 
         # Assert that the _public_repos_url property was called once
@@ -107,6 +111,47 @@ class TestGithubOrgClient(unittest.TestCase):
 
         # Assert that the result matches the expected result
         self.assertEqual(result, expected_result)
+
+
+@parameterized_class([
+    {"org_payload": org_payload,
+     "repos_payload": repos_payload,
+     "expected_repos": expected_repos,
+     "apache2_repos": apache2_repos}
+])
+class TestIntegrationGithubOrgClient(unittest.TestCase):
+    """
+    Integration tests for the GithubOrgClient class.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        """
+        Set up class method to mock requests.get.
+        """
+        cls.get_patcher = patch('requests.get')
+
+        cls.mock_get = cls.get_patcher.start()
+        cls.mock_get.return_value = Mock()
+        cls.mock_get.return_value.json.side_effect = [
+            cls.org_payload,
+            cls.repos_payload
+        ]
+
+    @classmethod
+    def tearDownClass(cls):
+        """
+        Tear down class method to stop patcher.
+        """
+        cls.get_patcher.stop()
+
+    def test_public_repos(self):
+        """
+        Test the public_repos method with integration.
+        """
+        client = GithubOrgClient("example_org")
+        result = client.public_repos()
+        self.assertEqual(result, self.expected_repos)
 
 
 if __name__ == '__main__':
