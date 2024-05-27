@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """
-Unittest parameterization and mocking
+Unittest parameterization, mocking, and memoization
 """
 
 import unittest
 from unittest.mock import patch, Mock
 from parameterized import parameterized
 import requests
+from functools import wraps
 
 
 def access_nested_map(nested_map, path):
@@ -35,6 +36,24 @@ def get_json(url):
     """
     response = requests.get(url)
     return response.json()
+
+
+def memoize(func):
+    """
+    Decorator to cache the results of a function call.
+
+    :param func: Function to be memoized
+    :return: Wrapper function with caching mechanism
+    """
+    cache = {}
+
+    @wraps(func)
+    def memoized_function(*args):
+        if args not in cache:
+            cache[args] = func(*args)
+        return cache[args]
+
+    return memoized_function
 
 
 class TestAccessNestedMap(unittest.TestCase):
@@ -92,7 +111,7 @@ class TestGetJson(unittest.TestCase):
 
         :param test_url: URL to make the GET request to.
         :param test_payload: The expected JSON payload
-                        returned by the GET request.
+                returned by the GET request.
         :param mock_get: Mock object for requests.get.
         """
         mock_response = Mock()
@@ -102,6 +121,40 @@ class TestGetJson(unittest.TestCase):
         result = get_json(test_url)
         mock_get.assert_called_once_with(test_url)
         self.assertEqual(result, test_payload)
+
+
+class TestMemoize(unittest.TestCase):
+    """
+    Test case for the memoize decorator.
+    """
+
+    def test_memoize(self):
+        """
+        Test memoize decorator to ensure it caches function results.
+        """
+
+        class TestClass:
+            """
+            Test class to demonstrate memoization.
+            """
+
+            def a_method(self):
+                return 42
+
+            @memoize
+            def a_property(self):
+                return self.a_method()
+
+        test_instance = TestClass()
+
+        with patch.object(test_instance, 'a_method',
+                          return_value=42) as mocked_method:
+            result_1 = test_instance.a_property()
+            result_2 = test_instance.a_property()
+
+            mocked_method.assert_called_once()
+            self.assertEqual(result_1, 42)
+            self.assertEqual(result_2, 42)
 
 
 if __name__ == '__main__':
