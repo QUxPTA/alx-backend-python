@@ -40,38 +40,73 @@ class TestGithubOrgClient(unittest.TestCase):
         result = client.org
         self.assertEqual(result, responses[org_name])
 
-        @patch('client.get_json')
-        @patch('client.GithubOrgClient._public_repos_url',
-               return_value='https://api.github.com/orgs/example_org/repos')
-        def test_public_repos(self, mock_public_repos_url, mock_get_json):
-            """
-                    Test the public_repos property of GithubOrgClient.
+    @patch('client.GithubOrgClient.org', return_value={"public_repos": 10})
+    def test_public_repos_url(self, mock_org):
+        """
+        Test the _public_repos_url method of GithubOrgClient.
 
-                    :param mock_public_repos_url: Mock object for
-                    _public_repos_url property.
-                    :param mock_get_json: Mock object for get_json method.
-                    """
-            # Mock payload for get_json
-            payload = [{"name": "repo1"}, {"name": "repo2"}]
+        :param mock_org: Mock object for the org property.
+        """
+        # Create an instance of GithubOrgClient
+        client = GithubOrgClient("example_org")
 
-            # Configure side_effect of mock_get_json to return the payload
-            mock_get_json.return_value = payload
+        # Call the _public_repos_url method
+        result = client._public_repos_url()
 
-            # Create an instance of GithubOrgClient
-            client = GithubOrgClient("example_org")
+        # Assert that the result is the expected URL
+        self.assertEqual(
+            result, "https://api.github.com/orgs/example_org/repos")
 
-            # Access the public_repos property
-            result = client.public_repos
+    @patch('client.get_json', return_value=[{"name": "repo1"},
+                                            {"name": "repo2"}])
+    @patch('client.GithubOrgClient._public_repos_url',
+           return_value="https://api.github.com/orgs/example_org/repos")
+    def test_public_repos(self, mock_public_repos_url, mock_get_json):
+        """
+        Test the public_repos method of GithubOrgClient.
 
-            # Assert that the result is what we expect from the chosen payload
-            self.assertEqual(result, ["repo1", "repo2"])
+        :param mock_public_repos_url: Mock object for
+        _public_repos_url property.
+        :param mock_get_json: Mock object for get_json function.
+        """
+        # Create an instance of GithubOrgClient
+        client = GithubOrgClient("example_org")
 
-            # Assert that the mocked property was called once
-            mock_public_repos_url.assert_called_once()
+        # Call the public_repos method
+        result = client.public_repos()
 
-            # Assert that get_json was called once with the correct URL
-            mock_get_json.assert_called_once_with(
-                'https://api.github.com/orgs/example_org/repos')
+        # Assert that the result is the expected list of repositories
+        expected_result = [{"name": "repo1"}, {"name": "repo2"}]
+        self.assertEqual(result, expected_result)
+
+        # Assert that the _public_repos_url property was called once
+        mock_public_repos_url.assert_called_once()
+
+        # Assert that the get_json function was called once
+        mock_get_json.assert_called_once()
+
+    @parameterized.expand([
+        ({"license": {"key": "my_license"}}, "my_license", True),
+        ({"license": {"key": "other_license"}}, "my_license", False)
+    ])
+    def test_has_license(self, repo, license_key, expected_result):
+        """
+        Test the has_license method of GithubOrgClient.
+
+        :param repo: Dictionary representing the repository data.
+        :param license_key: Key of the license to check.
+        :param expected_result: Expected result of has_license method.
+        """
+        # Create an instance of GithubOrgClient
+        client = GithubOrgClient("example_org")
+
+        # Mock the get_json method to return the repository data
+        with patch('client.get_json', return_value=repo):
+            # Call the has_license method
+            result = client.has_license(license_key)
+
+        # Assert that the result matches the expected result
+        self.assertEqual(result, expected_result)
 
 
 if __name__ == '__main__':
